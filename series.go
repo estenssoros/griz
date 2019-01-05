@@ -1,4 +1,4 @@
-package grizzly
+package griz
 
 import (
 	"bufio"

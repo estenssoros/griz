@@ -1,4 +1,4 @@
-package grizzly
+package griz
 
 type Row struct {
 	Idx    int
