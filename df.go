@@ -126,6 +126,16 @@ func (df *DataFrame) Head(rows int) {
 	for i := 0; i < rows; i++ {
 		table.Append(df.Iloc(i).ToString())
 	}
+	footer := make([]string, df.Width())
+	for i := 0; i < df.Width(); i++ {
+		footer[i] = DataTypeString(df.DataTypes[i])
+	}
+	table.SetFooter(footer)
+	colors := make([]tablewriter.Colors, df.Width())
+	for i := 0; i < df.Width(); i++ {
+		colors[i] = tablewriter.Colors{tablewriter.FgGreenColor}
+	}
+	table.SetFooterColor(colors...)
 	table.Render()
 }
 
