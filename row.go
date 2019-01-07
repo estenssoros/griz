@@ -6,6 +6,7 @@ import (
 	"reflect"
 )
 
+// Row holds row data
 type Row struct {
 	Idx       int
 	Columns   []string
@@ -23,14 +24,15 @@ func (r Row) String() string {
 	return string(ju)
 }
 
-func (r *Row) Map() map[string]float64 {
-	out := map[string]float64{}
-	// for i, n := range r.Names {
-	// 	out[n] = r.Values[i].(float64)
-	// }
+func (r *Row) Map() map[string]interface{} {
+	out := map[string]interface{}{}
+	for i, c := range r.Columns {
+		out[c] = r.Value.([]interface{})[i]
+	}
 	return out
 }
 
+// ToString converts the row value to a []string
 func (r *Row) ToString() []string {
 	out := []string{}
 	v := reflect.Indirect(reflect.ValueOf(r.Value))
@@ -49,6 +51,7 @@ func (r *Row) ToString() []string {
 	return out
 }
 
+// Iloc returns the value at an index
 func (r *Row) Iloc(idx int) interface{} {
 	v := reflect.Indirect(reflect.ValueOf(r.Value))
 	dataType := r.DataTypes[idx]
@@ -69,10 +72,6 @@ func (r *Row) Iloc(idx int) interface{} {
 func (r *Row) Loc(column string) interface{} {
 	idx := index(column, r.Columns)
 	return r.Iloc(idx)
-}
-
-func (r *Row) Append(vale interface{}) {
-	// TODO
 }
 
 // SetLoc sets the column value of a row to a value
