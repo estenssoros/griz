@@ -28,12 +28,12 @@ func (s *Series) CumSum() *Series {
 }
 
 // Invert returns a new series that is inverted
-func (s *Series) Invert(name string) *Series {
+func (s *Series) Invert() *Series {
 	mat := make([]float64, s.Len())
 	for i, j := 0, len(mat)-1; i < j; i, j = i+1, j-1 {
 		mat[i], mat[j] = s.FloatMat[j], s.FloatMat[i]
 	}
-	return newFloatSeries(mat, name)
+	return newFloatSeries(mat, s.Name)
 }
 
 // Rename renames a series
