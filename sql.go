@@ -30,7 +30,7 @@ func ReadSQL(ctx context.Context, query string) (*DataFrame, error) {
 		switch c.DatabaseTypeName() {
 		case "VARCHAR", "TEXT":
 			typeName = StringType
-		case "FLOAT", "INT", "BIGINT", "DOUBLE":
+		case "FLOAT", "INT", "BIGINT", "DOUBLE", "DECIMAL":
 			typeName = FloatType
 		case "TINYINT":
 			typeName = BoolType
