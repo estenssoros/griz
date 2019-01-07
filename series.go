@@ -10,6 +10,7 @@ const (
 	FloatType  = iota
 	StringType = iota
 	TimeType   = iota
+	UUIDType   = iota
 )
 
 // DataTypeString converts a data type to string
@@ -99,21 +100,15 @@ func NewSeries(data interface{}, name string) *Series {
 	}
 	switch t.Kind() {
 	case reflect.Slice, reflect.Array:
-		elT := t.Elem()
-		if elT.Kind() == reflect.Ptr {
-			elT = elT.Elem()
-		}
-		switch elT.Kind() {
-		case reflect.Float64:
+		switch dataType(data) {
+		case FloatType:
 			return newFloatSeries(data, name)
-		case reflect.String:
+		case StringType:
 			return newStringSeries(data, name)
-		case reflect.Bool:
+		case BoolType:
 			return newBoolSeries(data, name)
-		case reflect.TypeOf(time.Time{}).Kind():
+		case TimeType:
 			return newTimeSeries(data, name)
-		default:
-			panicf("new series: data type not supported: %s", elT.Kind().String())
 		}
 	default:
 		panicf("new series: data must be array not %s", t.Kind().String())
