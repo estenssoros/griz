@@ -1,144 +1,177 @@
 package griz
 
 import (
-	"bufio"
-	"bytes"
-	"fmt"
-	"os"
-
-	"github.com/gonum/floats"
-	"github.com/olekukonko/tablewriter"
-	"github.com/pkg/errors"
+	"reflect"
+	"time"
 )
 
-type Series struct {
-	Name string
-	Mat  []float64
+const (
+	BoolType   = 0
+	FloatType  = iota
+	StringType = iota
+)
+
+// DataTypeString converts a data type to string
+func DataTypeString(i int) string {
+	switch i {
+	case BoolType:
+		return "bool"
+	case FloatType:
+		return "float"
+	case StringType:
+		return "string"
+	default:
+		panicf("unknown datatype: %d", i)
+	}
+	return ""
 }
 
-func newSeries(data []float64, name string) *Series {
-	return &Series{Name: name, Mat: data}
+// Series holds data in a columnar format
+type Series struct {
+	Name      string
+	FloatMat  []float64
+	StringMat []string
+	BoolMat   []bool
+	DateMat   []Date
+	TimeMat   []time.Time
+	DataType  int
 }
 
 // Len returns the length of the series
 func (s *Series) Len() int {
-	return len(s.Mat)
+	switch s.DataType {
+	case FloatType:
+		return len(s.FloatMat)
+	case StringType:
+		return len(s.StringMat)
+	case BoolType:
+		return len(s.BoolMat)
+	default:
+		panicf("unknown dataType: %d", s.DataType)
+	}
+	return 0
 }
 
 func (s Series) String() string {
-	var b bytes.Buffer
-	{
-		writer := bufio.NewWriter(&b)
-		table := tablewriter.NewWriter(writer)
-		table.SetHeader([]string{s.Name})
-		for _, row := range s.Mat {
-			if row < 1.0 {
-				table.Append([]string{fmt.Sprintf("%.4f", row)})
-			} else {
-				table.Append([]string{fmt.Sprintf("%.2f", row)})
-			}
-		}
-		table.Render()
-		writer.Flush()
+	switch s.DataType {
+	case FloatType:
+		return s.FloatString()
+	case StringType:
+		return s.StringString()
+	case BoolType:
+		return s.BoolString()
+	default:
+		panicf("series String(): unknown dataType: %d", s.DataType)
 	}
-	return b.String()
+	return ""
 }
 
+// Head returns the top rows rows of a series
 func (s *Series) Head(rows int) {
 	if rows >= s.Len() {
 		panic("head index out of bounds")
 	}
-	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader([]string{s.Name})
-	for i := 0; i < rows; i++ {
-		if s.Mat[i] < 1.0 {
-			table.Append([]string{fmt.Sprintf("%.4f", s.Mat[i])})
-		} else {
-			table.Append([]string{fmt.Sprintf("%.2f", s.Mat[i])})
+	switch s.DataType {
+	case FloatType:
+		s.FloatHead(rows)
+	case StringType:
+		s.StringHead(rows)
+	case BoolType:
+		s.BoolHead(rows)
+	default:
+		panicf("unknown dataType: %d", s.DataType)
+	}
+}
+
+// NewSeries creates a new series
+func NewSeries(data interface{}, name string) *Series {
+	t := reflect.TypeOf(data)
+	if t.Kind() == reflect.Ptr {
+		t = t.Elem()
+	}
+	switch t.Kind() {
+	case reflect.Slice, reflect.Array:
+		el := t.Elem()
+		if el.Kind() == reflect.Ptr {
+			el = el.Elem()
 		}
+		switch el.Kind() {
+		case reflect.Float64:
+			return newFloatSeries(data, name)
+		case reflect.String:
+			return newStringSeries(data, name)
+		case reflect.Bool:
+			return newBoolSeries(data, name)
+		default:
+			panicf("new series: data type not supported: %s", el.Kind().String())
+		}
+	default:
+		panicf("new series: data must be array not %s", t.Kind().String())
 	}
-	table.Render()
+	return &Series{}
 }
 
-// MulSeriesInplace multiplies a series by another in place
-func (s *Series) MulSeriesInplace(other *Series) *Series {
+// Iloc returns the interface value at a location
+func (s *Series) Iloc(idx int) interface{} {
+	switch s.DataType {
+	case FloatType:
+		return s.FloatMat[idx]
+	case StringType:
+		return s.StringMat[idx]
+	case BoolType:
+		return s.BoolMat[idx]
+	default:
+		panicf("series iloc: data type not supported: %d", s.DataType)
+	}
+	return nil
+}
+
+// Bool gets the bool value at an index
+func (s *Series) Bool(idx int) bool {
+	if s.DataType != BoolType {
+		panic("bool only supports bool")
+	}
+	return s.BoolMat[idx]
+}
+
+// Equals returns a boolean series of the comparison between two series
+func (s *Series) Equals(other *Series) *Series {
 	if s.Len() != other.Len() {
-		panic(errors.Errorf("dimension mismatch: this: %d other: %d", len(s.Mat), len(other.Mat)))
+		panicf("series equal: dimension mismatch: this: %d other: %d", s.Len(), other.Len())
 	}
-	for i := range s.Mat {
-		s.Mat[i] = s.Mat[i] * other.Mat[i]
+	if s.DataType != other.DataType {
+		panicf("series equal: can only compare same datatypes")
 	}
-	return s
+	switch s.DataType {
+	case FloatType:
+		return s.floatSeriesEqual(other)
+	case StringType:
+		return s.stringSeriesEqual(other)
+	case BoolType:
+		return s.boolSeriesEqual(other)
+	default:
+		panicf("series equals: data type not supported %d", s.DataType)
+	}
+	return nil
 }
 
-// MulSeries returns a series that is the multiple of another series
-func (s *Series) MulSeries(other *Series, name string) *Series {
+// NotEquals returns a bool series where two series are equal
+func (s *Series) NotEquals(other *Series) *Series {
 	if s.Len() != other.Len() {
-		panic(errors.Errorf("dimension mismatch: this: %d other: %d", len(s.Mat), len(other.Mat)))
+		panicf("series equal: dimension mismatch: this: %d other: %d", s.Len(), other.Len())
 	}
-	mat := make([]float64, s.Len())
-	for i := range s.Mat {
-		mat[i] = s.Mat[i] * other.Mat[i]
+	if s.DataType != other.DataType {
+		panicf("series equal: can only compare same datatypes")
 	}
-	return newSeries(mat, name)
-}
-
-// MulValueInplace multiplies a series inplace by a value
-func (s *Series) MulValueInplace(value float64) {
-	for i := range s.Mat {
-		s.Mat[i] = s.Mat[i] * value
+	switch s.DataType {
+	case FloatType:
+		return s.floatSeriesNotEqual(other)
+	case StringType:
+		return s.stringSeriesNotEqual(other)
+	case BoolType:
+		return s.boolSeriesNotEqual(other)
+	default:
+		panicf("series equals: data type not supported %d", s.DataType)
 	}
-}
-
-// MulValue returns a series multiplied by another value
-func (s *Series) MulValue(value float64) *Series {
-	mat := make([]float64, s.Len())
-	for i := range s.Mat {
-		mat[i] = s.Mat[i] * value
-	}
-	return newSeries(mat, s.Name)
-}
-
-// Sub subtracts a series from another inplace
-func (s *Series) Sub(other *Series) *Series {
-	if s.Len() != other.Len() {
-		panic(errors.Errorf("dimension mismatch: this: %d other: %d", len(s.Mat), len(other.Mat)))
-	}
-	for i := range s.Mat {
-		s.Mat[i] = s.Mat[i] - other.Mat[i]
-	}
-	return s
-}
-
-// CumSum performs the cumsum of a series
-func (s *Series) CumSum(name string) *Series {
-	mat := make([]float64, s.Len())
-	floats.CumSum(mat, s.Mat)
-	return newSeries(mat, name)
-}
-
-// Invert returns a new series that is inverted
-func (s *Series) Invert(name string) *Series {
-	mat := make([]float64, s.Len())
-	for i, j := 0, len(mat)-1; i < j; i, j = i+1, j-1 {
-		mat[i], mat[j] = s.Mat[j], s.Mat[i]
-	}
-	return newSeries(mat, name)
-}
-
-// Rename renames a series
-func (s *Series) Rename(name string) *Series {
-	s.Name = name
-	return s
-}
-
-func (s *Series) Add(other *Series) *Series {
-	if s.Len() != other.Len() {
-		panic(errors.Errorf("dimension mismatch: this: %d other: %d", len(s.Mat), len(other.Mat)))
-	}
-	mat := make([]float64, s.Len())
-	for i := 0; i < s.Len(); i++ {
-		mat[i] = s.Mat[i] + other.Mat[i]
-	}
-	return newSeries(mat, s.Name)
+	return nil
 }

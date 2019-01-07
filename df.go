@@ -5,15 +5,18 @@ import (
 	"bytes"
 	"fmt"
 	"os"
+	"reflect"
 
 	"github.com/olekukonko/tablewriter"
 	"github.com/pkg/errors"
 )
 
+// DataFrame tries to provide functionality of pandas
 type DataFrame struct {
 	Columns   []string
 	ColumnMap map[string]int
-	Mat       [][]float64
+	DataTypes []int
+	Mat       interface{} // is [][]interface{}
 }
 
 func (df DataFrame) String() string {
@@ -21,17 +24,86 @@ func (df DataFrame) String() string {
 	writer := bufio.NewWriter(&b)
 	table := tablewriter.NewWriter(writer)
 	table.SetHeader(df.Columns)
-	for _, row := range df.Mat {
-		table.Append(rowToString(row))
+	for row := range df.Iterrows() {
+		table.Append(row.ToString())
 	}
+	footer := make([]string, df.Width())
+	for i := 0; i < df.Width(); i++ {
+		footer[i] = DataTypeString(df.DataTypes[i])
+	}
+	table.SetFooter(footer)
+	colors := make([]tablewriter.Colors, df.Width())
+	for i := 0; i < df.Width(); i++ {
+		colors[i] = tablewriter.Colors{tablewriter.FgGreenColor}
+	}
+	table.SetFooterColor(colors...)
 	table.Render()
 	writer.Flush()
 	return b.String()
 }
 
+// Iterrows loops through the rows of a dataframe
+func (df *DataFrame) Iterrows() chan *Row {
+	ch := make(chan *Row)
+	go func() {
+		v := reflect.Indirect(reflect.ValueOf(df.Mat))
+		for i := 0; i < v.Len(); i++ {
+			row := df.Iloc(i)
+			ch <- row
+		}
+		close(ch)
+	}()
+	return ch
+}
+
+// IterSeries loops through the series of a dataframe
+func (df *DataFrame) IterSeries() chan *Series {
+	//TODO
+	ch := make(chan *Series)
+	go func() {
+		close(ch)
+	}()
+	return ch
+}
+
+// NewDataFrame takes an interface that is realld a [][]intrerface and
+// a list of columns names. Returns a pointer to a DataFrame
+func NewDataFrame(data interface{}, columns []string, dataTypes []int) *DataFrame {
+	if len(columns) != len(dataTypes) {
+		panic("new dataframe: columns do not match data types")
+	}
+	dataV := reflect.Indirect(reflect.ValueOf(data))
+	if dataV.Len() == 0 {
+		panic(errors.New("new dataframe: no data provided"))
+	}
+	rowLen := valueLen(dataV.Index(0))
+	if rowLen != len(columns) {
+		panic("new dataframe: row len does not match column")
+	}
+	for i := 1; i < dataV.Len(); i++ {
+		if valueLen(dataV.Index(i)) != rowLen {
+			panic(errors.Errorf("new dataframe: %d does not match inital dimention: %d", i, rowLen))
+		}
+	}
+	columnMap := make(map[string]int)
+	for i, c := range columns {
+		if _, ok := columnMap[c]; ok {
+			panicf("%s already exists in dataframe", c)
+		}
+		columnMap[c] = i
+	}
+	return &DataFrame{
+		Columns:   columns,
+		ColumnMap: columnMap,
+		DataTypes: dataTypes,
+		Mat:       data,
+	}
+}
+
 // Len returns the length of the dataframe
 func (df *DataFrame) Len() int {
-	return len(df.Mat)
+	v := reflect.Indirect(reflect.ValueOf(df.Mat))
+	return v.Len()
 }
 
 // Width return the width of the dataframe
@@ -44,6 +116,7 @@ func (df *DataFrame) Dim() (r int, c int) {
 	return df.Len(), df.Width()
 }
 
+// Head prints the for x rows of a database
 func (df *DataFrame) Head(rows int) {
 	if rows >= df.Len() {
 		panic("head index out of bounds")
@@ -51,22 +124,79 @@ func (df *DataFrame) Head(rows int) {
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetHeader(df.Columns)
 	for i := 0; i < rows; i++ {
-		table.Append(rowToString(df.Row(i)))
+		table.Append(df.Iloc(i).ToString())
 	}
 	table.Render()
 }
 
-// Get pulls a single column from a dataframe
-func (df *DataFrame) Get(column string) *Series {
+func (df *DataFrame) getFloatSeries(column string) *Series {
+	idx := df.ColumnMap[column]
+	data := make([]float64, df.Len())
+	for row := range df.Iterrows() {
+		data[row.Idx] = row.Iloc(idx).(float64)
+	}
+	return newFloatSeries(data, column)
+}
+
+func (df *DataFrame) getStringSeries(column string) *Series {
+	idx := df.ColumnMap[column]
+	data := make([]string, df.Len())
+	for row := range df.Iterrows() {
+		data[row.Idx] = row.Iloc(idx).(string)
+	}
+	return newStringSeries(data, column)
+}
+
+func (df *DataFrame) getBoolSeries(column string) *Series {
+	idx := df.ColumnMap[column]
+	data := make([]bool, df.Len())
+	for row := range df.Iterrows() {
+		data[row.Idx] = row.Iloc(idx).(bool)
+	}
+	return newBoolSeries(data, column)
+}
+
+// GetSeries pulls a single column from a dataframe
+func (df *DataFrame) GetSeries(column string) *Series {
 	idx, ok := df.ColumnMap[column]
 	if !ok {
 		panic(errors.Errorf("column: %s does not exist", column))
 	}
-	data := make([]float64, len(df.Mat))
-	for i, row := range df.Mat {
-		data[i] = row[idx]
+	switch df.DataTypes[idx] {
+	case FloatType:
+		return df.getFloatSeries(column)
+	case StringType:
+		return df.getStringSeries(column)
+	case BoolType:
+		return df.getBoolSeries(column)
+	default:
+		panicf("dataframe get: data type %d not supported", df.DataTypes[idx])
 	}
-	return newSeries(data, column)
+	return nil
+}
+
+// GetDataFrame pulls a single column from a dataframe
+func (df *DataFrame) GetDataFrame(columns ...string) *DataFrame {
+	if len(columns) == 0 {
+		panic("no columns supplied")
+	}
+	dataTypes := []int{}
+	for _, c := range columns {
+		if dIdx, ok := df.ColumnMap[c]; !ok {
+			panic(fmt.Sprintf("column: %s does not exists", c))
+		} else {
+			dataTypes = append(dataTypes, df.DataTypes[dIdx])
+		}
+	}
+	data := make([][]interface{}, df.Len())
+	for row := range df.Iterrows() {
+		newRow := make([]interface{}, len(columns))
+		for i, c := range columns {
+			newRow[i] = row.Loc(c)
+		}
+		data[row.Idx] = newRow
+	}
+	return NewDataFrame(data, columns, dataTypes)
 }
 
 // GetMany returns a dataframe with the selected columns
@@ -79,15 +209,17 @@ func (df *DataFrame) GetMany(columns []string) *DataFrame {
 			panic(fmt.Sprintf("column: %s does not exists", c))
 		}
 	}
-	data := make([][]float64, df.Len())
-	for rowNum, row := range df.Mat {
-		newRow := make([]float64, len(columns))
+	data := make([][]interface{}, df.Len())
+	for row := range df.Iterrows() {
+		newRow := make([]interface{}, len(columns))
 		for i, c := range columns {
-			newRow[i] = row[df.ColumnMap[c]]
+			newRow[i] = row.Loc(c)
 		}
-		data[rowNum] = newRow
+		data[row.Idx] = newRow
 	}
-	return NewDataFrame(data, columns)
+	// TODO
+	// return NewDataFrame(data, columns)
+	return &DataFrame{}
 }
 
 // AddColumn adds a column to the dataframe
@@ -100,33 +232,31 @@ func (df *DataFrame) AddColumn(s *Series) {
 	}
 	df.Columns = append(df.Columns, s.Name)
 	df.ColumnMap[s.Name] = len(df.Columns) - 1
-	for i := range df.Mat {
-		df.Mat[i] = append(df.Mat[i], s.Mat[i])
+	for i := 0; i < df.Len(); i++ {
+		df.Iloc(i).Append(s.FloatMat[i])
 	}
 }
 
-// Row returns a slice of row
-func (df *DataFrame) Row(idx int) []float64 {
+// SetLoc sets a location value
+func (df *DataFrame) SetLoc(idx int, column string, val interface{}) {
+	if _, ok := df.ColumnMap[column]; !ok {
+		panic(fmt.Sprintf("column: %s does not exists", column))
+	}
+	df.Iloc(idx).SetLoc(column, val)
+}
+
+// Iloc returns a row by index
+func (df *DataFrame) Iloc(idx int) *Row {
 	if idx >= df.Len() {
-		panic("row index out of bounds")
+		panic("df iloc: row index out of bounds")
 	}
-	return df.Mat[idx]
-}
-
-func (df *DataFrame) GetLoc(column string, idx int) float64 {
-	colIdx, ok := df.ColumnMap[column]
-	if !ok {
-		panic(fmt.Sprintf("column: %s does not exists", column))
+	dataV := reflect.Indirect(reflect.ValueOf(df.Mat))
+	return &Row{
+		Idx:       idx,
+		Columns:   df.Columns,
+		Value:     dataV.Index(idx).Interface(),
+		DataTypes: df.DataTypes,
 	}
-	return df.Row(idx)[colIdx]
-}
-
-func (df *DataFrame) SetLoc(column string, idx int, val float64) {
-	colIdx, ok := df.ColumnMap[column]
-	if !ok {
-		panic(fmt.Sprintf("column: %s does not exists", column))
-	}
-	df.Row(idx)[colIdx] = val
 }
 
 // NewSeriesFromValue returns a series from a value that is the same length
@@ -136,49 +266,20 @@ func (df *DataFrame) NewSeriesFromValue(value float64, name string) *Series {
 	for i := 0; i < df.Len(); i++ {
 		mat[i] = value
 	}
-	return newSeries(mat, name)
+	return NewSeries(mat, name)
 }
 
-func NewDataFrame(raw [][]float64, columns []string) *DataFrame {
-	if len(raw) == 0 {
-		panic(errors.New("no data present in matrix"))
+// Where indexs into a dataframe
+func (df *DataFrame) Where(s *Series) *DataFrame {
+	if s.DataType != BoolType {
+		panic("dataframe where only supports boolean series")
 	}
-	// data := []float64{}
-	// copy(data, raw[0])
-	rowLen := len(raw[0])
-	for i := 1; i < len(raw); i++ {
-		if len(raw[i]) != rowLen {
-			panic(errors.Errorf("row: %d does not match inital dimention: %d", i, rowLen))
+	data := [][]interface{}{}
+	matV := reflect.Indirect(reflect.ValueOf(df.Mat))
+	for i := 0; i < df.Len(); i++ {
+		if s.Bool(i) {
+			data = append(data, matV.Index(i).Interface().([]interface{}))
 		}
-		// data = append(data, raw[i]...)
 	}
-	// mat := mat64.NewDense(len(columns), len(data)/len(columns), data)
-	columnMap := make(map[string]int)
-	for i, c := range columns {
-		columnMap[c] = i
-	}
-	return &DataFrame{
-		Columns:   columns,
-		ColumnMap: columnMap,
-		Mat:       raw,
-	}
-}
-
-func (df *DataFrame) ToRow(idx int) *Row {
-	return &Row{
-		Idx:    idx,
-		Names:  df.Columns,
-		Values: df.Row(idx),
-	}
-}
-
-func (df *DataFrame) Iterrows() chan *Row {
-	ch := make(chan *Row)
-	go func() {
-		for i := 0; i < df.Len(); i++ {
-			ch <- df.ToRow(i)
-		}
-		close(ch)
-	}()
-	return ch
+	return NewDataFrame(data, df.Columns, df.DataTypes)
 }
