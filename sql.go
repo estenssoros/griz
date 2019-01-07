@@ -3,12 +3,16 @@ package griz
 import (
 	"context"
 
-	"github.com/jmoiron/sqlx"
+	"github.com/estenssoros/dasorm"
+	"github.com/pkg/errors"
 )
 
 // ReadSQL returns a dataframe from a context and query
 func ReadSQL(ctx context.Context, query string) (*DataFrame, error) {
-	db := ctx.Value("db").(*sqlx.DB)
+	db, ok := ctx.Value("db").(*dasorm.Connection)
+	if !ok {
+		return nil, errors.New("missing 'db' in context or could not convert to *sqlx.DB")
+	}
 	rows, err := db.QueryContext(ctx, query)
 	if err != nil {
 		return nil, err
