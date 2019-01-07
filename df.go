@@ -223,18 +223,40 @@ func (df *DataFrame) GetMany(columns []string) *DataFrame {
 }
 
 // AddColumn adds a column to the dataframe
-func (df *DataFrame) AddColumn(s *Series) {
+func (df *DataFrame) AddColumn(s *Series) *DataFrame {
 	if s.Len() != df.Len() {
 		panic(errors.Errorf("dimension mismatch: dataframe: %d series: %d", df.Len(), s.Len()))
 	}
 	if _, ok := df.ColumnMap[s.Name]; ok {
 		panic(errors.Errorf("%s column already existing in dataframe", s.Name))
 	}
-	df.Columns = append(df.Columns, s.Name)
+	columns := append(df.Columns, s.Name)
+	dataTypes := append(df.DataTypes, s.DataType)
 	df.ColumnMap[s.Name] = len(df.Columns) - 1
-	for i := 0; i < df.Len(); i++ {
-		df.Iloc(i).Append(s.FloatMat[i])
+	data := [][]interface{}{}
+	switch s.DataType {
+	case FloatType:
+		for i := 0; i < df.Len(); i++ {
+			row := df.Iloc(i).Value.([]interface{})
+			row = append(row, s.FloatMat[i])
+			data = append(data, row)
+		}
+	case StringType:
+		for i := 0; i < df.Len(); i++ {
+			row := df.Iloc(i).Value.([]interface{})
+			row = append(row, s.StringMat[i])
+			data = append(data, row)
+		}
+	case BoolType:
+		for i := 0; i < df.Len(); i++ {
+			row := df.Iloc(i).Value.([]interface{})
+			row = append(row, s.BoolMat[i])
+			data = append(data, row)
+		}
+	default:
+		panicf("unknown data type: %d", s.DataType)
 	}
+	return NewDataFrame(data, columns, dataTypes)
 }
 
 // SetLoc sets a location value
@@ -261,12 +283,28 @@ func (df *DataFrame) Iloc(idx int) *Row {
 
 // NewSeriesFromValue returns a series from a value that is the same length
 // as the dataframe
-func (df *DataFrame) NewSeriesFromValue(value float64, name string) *Series {
-	mat := make([]float64, df.Len())
-	for i := 0; i < df.Len(); i++ {
-		mat[i] = value
+func (df *DataFrame) NewSeriesFromValue(value interface{}, name string) *Series {
+	switch dataType(value) {
+	case FloatType:
+		mat := make([]float64, df.Len())
+		for i := 0; i < df.Len(); i++ {
+			mat[i] = value.(float64)
+		}
+		return NewSeries(mat, name)
+	case StringType:
+		mat := make([]string, df.Len())
+		for i := 0; i < df.Len(); i++ {
+			mat[i] = value.(string)
+		}
+		return NewSeries(mat, name)
+	case BoolType:
+		mat := make([]bool, df.Len())
+		for i := 0; i < df.Len(); i++ {
+			mat[i] = value.(bool)
+		}
+		return NewSeries(mat, name)
 	}
-	return NewSeries(mat, name)
+	return &Series{}
 }
 
 // Where indexs into a dataframe

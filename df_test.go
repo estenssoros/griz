@@ -129,3 +129,29 @@ func TestNotEquals(t *testing.T) {
 		t.Errorf("have: %v, want: %v", have, want)
 	}
 }
+
+func TestAppend(t *testing.T) {
+	df := createTestDF()
+	data := make([]string, df.Len())
+	for i := 0; i < df.Len(); i++ {
+		data[i] = "astring"
+	}
+	before := df.Width()
+	s := NewSeries(data, "append_me")
+	df = df.AddColumn(s)
+	after := df.Width()
+	if want, have := after, before+1; want != have {
+		t.Errorf("have: %v, want: %v", have, want)
+	}
+}
+
+func TestNewSeriesFromValue(t *testing.T) {
+	df := createTestDF()
+	s := df.NewSeriesFromValue("asdf", "new_series")
+	before := df.Width()
+	df = df.AddColumn(s)
+	after := df.Width()
+	if want, have := after, before+1; want != have {
+		t.Errorf("have: %v, want: %v", have, want)
+	}
+}
