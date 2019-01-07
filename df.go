@@ -199,29 +199,6 @@ func (df *DataFrame) GetDataFrame(columns ...string) *DataFrame {
 	return NewDataFrame(data, columns, dataTypes)
 }
 
-// GetMany returns a dataframe with the selected columns
-func (df *DataFrame) GetMany(columns []string) *DataFrame {
-	if len(columns) == 0 {
-		panic("no columns supplied")
-	}
-	for _, c := range columns {
-		if _, ok := df.ColumnMap[c]; !ok {
-			panic(fmt.Sprintf("column: %s does not exists", c))
-		}
-	}
-	data := make([][]interface{}, df.Len())
-	for row := range df.Iterrows() {
-		newRow := make([]interface{}, len(columns))
-		for i, c := range columns {
-			newRow[i] = row.Loc(c)
-		}
-		data[row.Idx] = newRow
-	}
-	// TODO
-	// return NewDataFrame(data, columns)
-	return &DataFrame{}
-}
-
 // AddColumn adds a column to the dataframe
 func (df *DataFrame) AddColumn(s *Series) *DataFrame {
 	if s.Len() != df.Len() {
