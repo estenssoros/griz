@@ -1,6 +1,9 @@
 package griz
 
-import "testing"
+import (
+	"testing"
+	"time"
+)
 
 func TestDataType(t *testing.T) {
 	{
@@ -24,6 +27,12 @@ func TestDataType(t *testing.T) {
 	{
 		data := []string{"asdf"}
 		if want, have := StringType, dataType(data); want != have {
+			t.Errorf("have: %d, want: %d", have, want)
+		}
+	}
+	{
+		data := []time.Time{time.Now()}
+		if want, have := TimeType, dataType(data); want != have {
 			t.Errorf("have: %d, want: %d", have, want)
 		}
 	}
