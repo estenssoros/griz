@@ -21,6 +21,7 @@ func newBoolSeries(data interface{}, name string) *Series {
 	}
 }
 
+// BoolString writes matrix to table
 func (s Series) BoolString() string {
 	var b bytes.Buffer
 	{
@@ -38,6 +39,7 @@ func (s Series) BoolString() string {
 	return b.String()
 }
 
+// BoolHead prints a table the first x rows of a series
 func (s *Series) BoolHead(rows int) {
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetHeader([]string{s.Name})

@@ -20,6 +20,7 @@ func newStringSeries(data interface{}, name string) *Series {
 	}
 }
 
+// StringString writes matrix to table
 func (s Series) StringString() string {
 	var b bytes.Buffer
 	{
@@ -37,6 +38,7 @@ func (s Series) StringString() string {
 	return b.String()
 }
 
+// StringHead prints a table the first x rows of a series
 func (s *Series) StringHead(rows int) {
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetHeader([]string{s.Name})

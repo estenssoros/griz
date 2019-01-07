@@ -21,6 +21,7 @@ func newFloatSeries(data interface{}, name string) *Series {
 	}
 }
 
+// FloatString writes matrix to table
 func (s Series) FloatString() string {
 	var b bytes.Buffer
 	{
@@ -42,6 +43,7 @@ func (s Series) FloatString() string {
 	return b.String()
 }
 
+// FloatHead prints a table the first x rows of a series
 func (s *Series) FloatHead(rows int) {
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetHeader([]string{s.Name})
