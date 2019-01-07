@@ -15,7 +15,8 @@ func TestReadSQL(t *testing.T) {
 	defer db.Close()
 	ctx := context.WithValue(context.Background(), "db", db.DB)
 	query := `
-	SELECT rv_month
+	SELECT created_at
+		, rv_month
 		, rv_year
 		, source
 		, teu
@@ -31,5 +32,5 @@ func TestReadSQL(t *testing.T) {
 	if want, have := 200, df.Len(); want != have {
 		t.Errorf("have: %d, want: %d", have, want)
 	}
-
+	df.Head(10)
 }

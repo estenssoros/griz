@@ -31,9 +31,9 @@ func ReadSQL(ctx context.Context, query string) (*DataFrame, error) {
 		case "TINYINT":
 			typeName = BoolType
 		case "DATE":
-			panic("read sql: date not implemented")
+			typeName = TimeType
 		case "DATETIME":
-			panic("read sql: datetime not implemented")
+			typeName = TimeType
 		}
 		dataTypes[i] = typeName
 	}
@@ -57,6 +57,8 @@ func ReadSQL(ctx context.Context, query string) (*DataFrame, error) {
 				row[i] = string(raw)
 			case BoolType:
 				row[i] = stringToBool(string(raw))
+			case TimeType:
+				row[i] = stringToTime(string(raw))
 			}
 		}
 		data = append(data, row)
