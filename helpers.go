@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"reflect"
 	"strconv"
+	"time"
 )
 
 func isIn(test string, list []string) bool {
@@ -49,7 +50,13 @@ func dataType(v interface{}) int {
 		case reflect.Bool:
 			return BoolType
 		default:
-			panicf("data type not supported: %s", t.Kind().String())
+			val := reflect.ValueOf(v)
+			switch val.Type() {
+			case reflect.TypeOf(time.Time{}):
+				return TimeType
+			default:
+				panicf("new series: data type not supported: %s", el.Kind().String())
+			}
 		}
 	case reflect.String:
 		return StringType
@@ -58,7 +65,13 @@ func dataType(v interface{}) int {
 	case reflect.Bool:
 		return BoolType
 	default:
-		panicf("data type not supported: %s", t.Kind().String())
+		val := reflect.ValueOf(v)
+		switch val.Type() {
+		case reflect.TypeOf(time.Time{}):
+			return TimeType
+		default:
+			panicf("data type not supported: %s", t.Kind().String())
+		}
 	}
 	return 0
 }

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"time"
 )
 
 // Row holds row data
@@ -44,6 +45,8 @@ func (r *Row) ToString() []string {
 			out = append(out, fmt.Sprintf("%.2f", v.Index(i).Interface().(float64)))
 		case BoolType:
 			out = append(out, fmt.Sprint(v.Index(i).Interface().(bool)))
+		case TimeType:
+			out = append(out, v.Index(i).Interface().(time.Time).Format(timefmt))
 		default:
 			panicf("row ToString(): unknown dataType: %d", dataType(v.Index(i).Interface()))
 		}
@@ -62,6 +65,8 @@ func (r *Row) Iloc(idx int) interface{} {
 		return v.Index(idx).Interface().(string)
 	case BoolType:
 		return v.Index(idx).Interface().(bool)
+	case TimeType:
+		return v.Index(idx).Interface().(time.Time)
 	default:
 		panicf("unknown datatype: %d", dataType)
 	}

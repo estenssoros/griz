@@ -2,19 +2,20 @@ package griz
 
 import (
 	"testing"
+	"time"
 )
 
 func TestDataframe(t *testing.T) {
 	data := []interface{}{
-		[]interface{}{"asdf", 1123.0, 12.5, false},
-		[]interface{}{"asdf", 1123.0, 12.5, false},
-		[]interface{}{"asdf", 1123.0, 12.5, false},
-		[]interface{}{"asdf", 1123.0, 12.5, false},
-		[]interface{}{"asdf", 1123.0, 12.5, true},
-		[]interface{}{"asdf", 1123.0, 12.5, false},
+		[]interface{}{"asdf", 1123.0, 12.5, false, time.Now()},
+		[]interface{}{"asdf", 1123.0, 12.5, false, time.Now()},
+		[]interface{}{"asdf", 1123.0, 12.5, false, time.Now()},
+		[]interface{}{"asdf", 1123.0, 12.5, false, time.Now()},
+		[]interface{}{"asdf", 1123.0, 12.5, true, time.Now()},
+		[]interface{}{"asdf", 1123.0, 12.5, false, time.Now()},
 	}
-	columns := []string{"col1", "col2", "col3", "col4"}
-	dataTypes := []int{StringType, FloatType, FloatType, BoolType}
+	columns := []string{"col1", "col2", "col3", "col4", "time"}
+	dataTypes := []int{StringType, FloatType, FloatType, BoolType, TimeType}
 	df := NewDataFrame(data, columns, dataTypes)
 
 	if want, have := "asdf", df.Iloc(0).Loc("col1"); want != have {
@@ -27,6 +28,7 @@ func TestDataframe(t *testing.T) {
 	if want, have := val, df.Iloc(1).Loc(col); want != have {
 		t.Errorf("have: %f, want: %f", have, want)
 	}
+	df.String()
 }
 
 func createTestDF() *DataFrame {
@@ -52,6 +54,7 @@ func TestAddition(t *testing.T) {
 	if want, have := val+1123.0, s.Iloc(1); want != have {
 		t.Errorf("have: %f, want: %f", have, want)
 	}
+	df.String()
 }
 
 func TestMultiplication(t *testing.T) {
@@ -61,6 +64,7 @@ func TestMultiplication(t *testing.T) {
 	if want, have := val*1123.0, s.Iloc(1); want != have {
 		t.Errorf("have: %f, want: %f", have, want)
 	}
+	df.String()
 }
 func TestSubstraction(t *testing.T) {
 	df := createTestDF()
@@ -76,6 +80,7 @@ func TestCumSum(t *testing.T) {
 	if want, have := 2246.00, s.Iloc(1); want != have {
 		t.Errorf("have: %f, want: %f", have, want)
 	}
+	df.String()
 }
 
 func TestWhere(t *testing.T) {
@@ -112,6 +117,7 @@ func TestGetDataFrame(t *testing.T) {
 	if want, have := 1, df.Width(); want != have {
 		t.Errorf("have: %v, want: %v", have, want)
 	}
+	df.String()
 }
 
 func TestEquals(t *testing.T) {

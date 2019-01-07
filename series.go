@@ -9,6 +9,7 @@ const (
 	BoolType   = 0
 	FloatType  = iota
 	StringType = iota
+	TimeType   = iota
 )
 
 // DataTypeString converts a data type to string
@@ -20,6 +21,8 @@ func DataTypeString(i int) string {
 		return "float"
 	case StringType:
 		return "string"
+	case TimeType:
+		return "time"
 	default:
 		panicf("unknown datatype: %d", i)
 	}
@@ -32,7 +35,6 @@ type Series struct {
 	FloatMat  []float64
 	StringMat []string
 	BoolMat   []bool
-	DateMat   []Date
 	TimeMat   []time.Time
 	DataType  int
 }
@@ -46,6 +48,8 @@ func (s *Series) Len() int {
 		return len(s.StringMat)
 	case BoolType:
 		return len(s.BoolMat)
+	case TimeType:
+		return len(s.TimeMat)
 	default:
 		panicf("unknown dataType: %d", s.DataType)
 	}
@@ -60,6 +64,8 @@ func (s Series) String() string {
 		return s.StringString()
 	case BoolType:
 		return s.BoolString()
+	case TimeType:
+		return s.TimeString()
 	default:
 		panicf("series String(): unknown dataType: %d", s.DataType)
 	}
@@ -78,6 +84,8 @@ func (s *Series) Head(rows int) {
 		s.StringHead(rows)
 	case BoolType:
 		s.BoolHead(rows)
+	case TimeType:
+		s.TimeHead(rows)
 	default:
 		panicf("unknown dataType: %d", s.DataType)
 	}
@@ -91,19 +99,21 @@ func NewSeries(data interface{}, name string) *Series {
 	}
 	switch t.Kind() {
 	case reflect.Slice, reflect.Array:
-		el := t.Elem()
-		if el.Kind() == reflect.Ptr {
-			el = el.Elem()
+		elT := t.Elem()
+		if elT.Kind() == reflect.Ptr {
+			elT = elT.Elem()
 		}
-		switch el.Kind() {
+		switch elT.Kind() {
 		case reflect.Float64:
 			return newFloatSeries(data, name)
 		case reflect.String:
 			return newStringSeries(data, name)
 		case reflect.Bool:
 			return newBoolSeries(data, name)
+		case reflect.TypeOf(time.Time{}).Kind():
+			return newTimeSeries(data, name)
 		default:
-			panicf("new series: data type not supported: %s", el.Kind().String())
+			panicf("new series: data type not supported: %s", elT.Kind().String())
 		}
 	default:
 		panicf("new series: data must be array not %s", t.Kind().String())
@@ -120,6 +130,8 @@ func (s *Series) Iloc(idx int) interface{} {
 		return s.StringMat[idx]
 	case BoolType:
 		return s.BoolMat[idx]
+	case TimeType:
+		return s.TimeMat[idx]
 	default:
 		panicf("series iloc: data type not supported: %d", s.DataType)
 	}
@@ -149,6 +161,8 @@ func (s *Series) Equals(other *Series) *Series {
 		return s.stringSeriesEqual(other)
 	case BoolType:
 		return s.boolSeriesEqual(other)
+	case TimeType:
+		return s.timeSeriesEqual(other)
 	default:
 		panicf("series equals: data type not supported %d", s.DataType)
 	}
@@ -170,6 +184,8 @@ func (s *Series) NotEquals(other *Series) *Series {
 		return s.stringSeriesNotEqual(other)
 	case BoolType:
 		return s.boolSeriesNotEqual(other)
+	case TimeType:
+		return s.timeSeriesNotEqual(other)
 	default:
 		panicf("series equals: data type not supported %d", s.DataType)
 	}
