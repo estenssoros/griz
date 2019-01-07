@@ -11,7 +11,7 @@ import (
 func newStringSeries(data interface{}, name string) *Series {
 	mat, ok := data.([]string)
 	if !ok {
-		panic("new float series: error converting data to []string")
+		panic("new string series: error converting data to []string")
 	}
 	return &Series{
 		Name:      name,
