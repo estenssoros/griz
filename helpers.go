@@ -49,14 +49,10 @@ func dataType(v interface{}) int {
 			return StringType
 		case reflect.Bool:
 			return BoolType
+		case reflect.TypeOf(time.Time{}).Kind():
+			return TimeType
 		default:
-			val := reflect.ValueOf(v)
-			switch val.Type() {
-			case reflect.TypeOf(time.Time{}):
-				return TimeType
-			default:
-				panicf("new series: data type not supported: %s", el.Kind().String())
-			}
+			panicf("data type: array: not supported: %s", el.Kind().String())
 		}
 	case reflect.String:
 		return StringType
@@ -70,27 +66,10 @@ func dataType(v interface{}) int {
 		case reflect.TypeOf(time.Time{}):
 			return TimeType
 		default:
-			panicf("data type not supported: %s", t.Kind().String())
+			panicf("data type: singleton: not supported: %s", t.Kind().String())
 		}
 	}
 	return 0
-}
-
-func rowToString(row []interface{}) []string {
-	out := make([]string, len(row))
-	for i := range row {
-		switch dataType(row) {
-		case FloatType:
-			if row[i].(float64) < 1 {
-				out[i] = fmt.Sprintf("%.4f", row[i])
-			} else {
-				out[i] = fmt.Sprintf("%.2f", row[i])
-			}
-		case StringType:
-			out[i] = fmt.Sprint(row[i])
-		}
-	}
-	return out
 }
 
 func panicf(format string, a ...interface{}) {
@@ -123,4 +102,11 @@ func stringToBool(s string) bool {
 		panicf("string to bool: error parsing: %s", s)
 	}
 	return false
+}
+func stringToTime(s string) time.Time {
+	t, err := time.Parse("2006-01-02T15:04:05Z", s)
+	if err != nil {
+		panicf("string to time: %v", err)
+	}
+	return t
 }
