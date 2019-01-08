@@ -11,7 +11,7 @@ import (
 func ReadSQL(ctx context.Context, query string) (*DataFrame, error) {
 	db, ok := ctx.Value("db").(*dasorm.Connection)
 	if !ok {
-		return nil, errors.New("missing 'db' in context or could not convert to *sqlx.DB")
+		return nil, errors.New("missing 'db' in context or could not convert to *dasorm.Connection")
 	}
 	rows, err := db.QueryContext(ctx, query)
 	if err != nil {
