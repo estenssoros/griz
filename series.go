@@ -164,6 +164,17 @@ func (s *Series) Equals(other *Series) *Series {
 	return nil
 }
 
+func (s *Series) EqualsString(val string) *Series {
+	if s.DataType != StringType {
+		panic("series equals string only supports string series")
+	}
+	data := make([]bool, s.Len())
+	for i := 0; i < s.Len(); i++ {
+		data[i] = s.StringMat[i] == val
+	}
+	return NewSeries(data, s.Name)
+}
+
 // NotEquals returns a bool series where two series are equal
 func (s *Series) NotEquals(other *Series) *Series {
 	if s.Len() != other.Len() {
@@ -185,4 +196,40 @@ func (s *Series) NotEquals(other *Series) *Series {
 		panicf("series equals: data type not supported %d", s.DataType)
 	}
 	return nil
+}
+
+func (s *Series) Unique() interface{} {
+	switch s.DataType {
+	case FloatType:
+		return s.UniqueFloat()
+	case StringType:
+		return s.UniqueString()
+	case BoolType:
+		return s.UniqueBool()
+	case TimeType:
+		return s.UniqueTime()
+	}
+	return nil
+}
+
+func (s *Series) And(other *Series) *Series {
+	if s.DataType != BoolType || other.DataType != BoolType {
+		panic("series and: both data types must be bool")
+	}
+	data := make([]bool, s.Len())
+	for i := 0; i < s.Len(); i++ {
+		data[i] = s.BoolMat[i] && other.BoolMat[i]
+	}
+	return NewSeries(data, s.Name)
+}
+
+func (s *Series) Or(other *Series) *Series {
+	if s.DataType != BoolType || other.DataType != BoolType {
+		panic("series and: both data types must be bool")
+	}
+	data := make([]bool, s.Len())
+	for i := 0; i < s.Len(); i++ {
+		data[i] = s.BoolMat[i] || other.BoolMat[i]
+	}
+	return NewSeries(data, s.Name)
 }
