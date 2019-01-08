@@ -161,3 +161,40 @@ func TestNewSeriesFromValue(t *testing.T) {
 		t.Errorf("have: %v, want: %v", have, want)
 	}
 }
+
+func createMathDF() *DataFrame {
+	data := []interface{}{
+		[]interface{}{1.0, 1123.0, 12.5, 5.0, 10.0},
+		[]interface{}{1.0, 1123.0, 12.5, 5.0, 10.0},
+		[]interface{}{1.0, 1123.0, 12.5, 5.0, 10.0},
+		[]interface{}{1.0, 1123.0, 12.5, 5.0, 10.0},
+		[]interface{}{1.0, 1123.0, 12.5, 5.0, 10.0},
+		[]interface{}{1.0, 1123.0, 12.5, 5.0, 10.0},
+		[]interface{}{1.0, 1123.0, 12.5, 5.0, 10.0},
+	}
+	columns := []string{"col1", "col2", "col3", "col4", "time"}
+	dataTypes := []int{FloatType, FloatType, FloatType, FloatType, FloatType}
+	return NewDataFrame(data, columns, dataTypes)
+}
+
+func TestDFAverage(t *testing.T) {
+	df := createMathDF()
+	df = df.AddColumn(df.Mean())
+	if want, have := 230.30, df.Iloc(0).Loc("avg").(float64); want != have {
+		t.Errorf("have: %v, want: %v", have, want)
+	}
+}
+func TestDFMin(t *testing.T) {
+	df := createMathDF()
+	df = df.AddColumn(df.Min())
+	if want, have := 1.0, df.Iloc(0).Loc("min").(float64); want != have {
+		t.Errorf("have: %v, want: %v", have, want)
+	}
+}
+func TestDFMax(t *testing.T) {
+	df := createMathDF()
+	df = df.AddColumn(df.Max())
+	if want, have := 1123.0, df.Iloc(0).Loc("max").(float64); want != have {
+		t.Errorf("have: %v, want: %v", have, want)
+	}
+}

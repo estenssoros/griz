@@ -52,3 +52,25 @@ func TestTimeSeries(t *testing.T) {
 		t.Errorf(str)
 	}
 }
+
+func TestMeanSeries(t *testing.T) {
+	data := []float64{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
+	s := NewSeries(data, "avg")
+	if want, have := 5.5, s.Mean(); have != want {
+		t.Errorf("have: %v, want: %v", have, want)
+	}
+}
+func TestMinSeries(t *testing.T) {
+	data := []float64{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
+	s := NewSeries(data, "avg")
+	if want, have := 1.0, s.Min(); have != want {
+		t.Errorf("have: %v, want: %v", have, want)
+	}
+}
+func TestMaxSeries(t *testing.T) {
+	data := []float64{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
+	s := NewSeries(data, "avg")
+	if want, have := 10.0, s.Max(); have != want {
+		t.Errorf("have: %v, want: %v", have, want)
+	}
+}
