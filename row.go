@@ -25,6 +25,11 @@ func (r Row) String() string {
 	return string(ju)
 }
 
+func (r *Row) Len() int {
+	v := reflect.Indirect(reflect.ValueOf(r.Value))
+	return v.Len()
+}
+
 func (r *Row) Map() map[string]interface{} {
 	out := map[string]interface{}{}
 	for i, c := range r.Columns {
