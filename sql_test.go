@@ -13,7 +13,7 @@ func TestReadSQL(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer db.Close()
-	ctx := context.WithValue(context.Background(), "db", db.DB)
+	ctx := context.WithValue(context.Background(), "db", db)
 	query := `
 	SELECT created_at
 		, rv_month
@@ -32,5 +32,4 @@ func TestReadSQL(t *testing.T) {
 	if want, have := 200, df.Len(); want != have {
 		t.Errorf("have: %d, want: %d", have, want)
 	}
-	df.Head(10)
 }
