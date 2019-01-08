@@ -72,3 +72,15 @@ func (s *Series) floatSeriesNotEqual(other *Series) *Series {
 	}
 	return newBoolSeries(data, s.Name)
 }
+
+func (s *Series) UniqueFloat() []float64 {
+	u := []float64{}
+	m := map[float64]bool{}
+	for _, f := range s.FloatMat {
+		if ok := m[f]; !ok {
+			u = append(u, f)
+			m[f] = true
+		}
+	}
+	return u
+}

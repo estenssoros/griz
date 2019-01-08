@@ -66,3 +66,15 @@ func (s *Series) boolSeriesNotEqual(other *Series) *Series {
 	}
 	return newBoolSeries(data, s.Name)
 }
+
+func (s *Series) UniqueBool() []bool {
+	u := []bool{}
+	m := map[bool]bool{}
+	for _, b := range s.BoolMat {
+		if ok := m[b]; !ok {
+			u = append(u, b)
+			m[b] = true
+		}
+	}
+	return u
+}

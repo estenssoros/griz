@@ -63,3 +63,15 @@ func (s *Series) stringSeriesNotEqual(other *Series) *Series {
 	}
 	return newBoolSeries(data, s.Name)
 }
+
+func (s *Series) UniqueString() []string {
+	u := []string{}
+	m := map[string]bool{}
+	for _, s := range s.StringMat {
+		if ok := m[s]; !ok {
+			u = append(u, s)
+			m[s] = true
+		}
+	}
+	return u
+}

@@ -66,3 +66,15 @@ func (s *Series) timeSeriesNotEqual(other *Series) *Series {
 	}
 	return newBoolSeries(data, s.Name)
 }
+
+func (s *Series) UniqueTime() []time.Time {
+	u := []time.Time{}
+	m := map[time.Time]bool{}
+	for _, t := range s.TimeMat {
+		if ok := m[t]; !ok {
+			u = append(u, t)
+			m[t] = true
+		}
+	}
+	return u
+}
