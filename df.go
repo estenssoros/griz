@@ -166,6 +166,11 @@ func (df *DataFrame) getBoolSeries(column string) *Series {
 	return newBoolSeries(data, column)
 }
 
+func (df *DataFrame) HasColumn(name string) bool {
+	_, ok := df.ColumnMap[name]
+	return ok
+}
+
 // GetSeries pulls a single column from a dataframe
 func (df *DataFrame) GetSeries(column string) *Series {
 	idx, ok := df.ColumnMap[column]
